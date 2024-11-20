@@ -47,21 +47,20 @@ def setup_qa_chain():
             'temperature': 0.8
         }
     )
-    # src/prompt.py
-    prompt_template = """Use the following pieces of context to answer the question at the end. 
-    If you don't know the answer, just say that you don't know, don't try to make up an answer.
-    {context}
-    Question: {question}
-    Answer:"""
- 
+    
     # Create prompt template
     PROMPT = PromptTemplate(
-        template=prompt_template, 
+        template="""Use the following pieces of information to answer the user's question.
+        If you don't know the answer, just say that you don't know, don't try to make up an answer.
+
+        Context: {context}
+        Question: {question}
+
+        Only return the helpful answer below and nothing else.
+        Helpful answer:""", 
         input_variables=["context", "question"]
     )
-    chain_type_kwargs={"prompt": PROMPT}
-    
-    # Create QA chain
+    # Create QA chain using the new invoke method
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -85,25 +84,12 @@ def index():
 
 @app.route("/get", methods=["GET", "POST"])
 def chat():
-    try:
-        if request.method != "POST":
-            return jsonify({"error": "Method not allowed"}), 405
-        
-        msg = request.form.get("msg")
-        if not msg:
-            return jsonify({"error": "No message provided"}), 400
-        
-        result = qa({"query": msg})
-        
-        # Add error handling for the response
-        if not result or "result" not in result:
-            return jsonify({"error": "No response generated"}), 500
-            
-        return jsonify({"response": result["result"]})
-    
-    except Exception as e:
-        print(f"Error in chat endpoint: {e}")
-        return jsonify({"error": "Internal server error"}), 500
+    msg=request.form['msg']
+    input = msg
+    print(input)
+    result=qa({"query":input})
+    print("Response:",result["result"])
+    return str(result["result"])
 
 if __name__ == '__main__':
     app.run(host="0.0.0.0", port=8080, debug=True)
