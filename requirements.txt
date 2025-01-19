@@ -5,4 +5,5 @@ langchain==0.0.225
 flask
 pypdf
 huggingface_hub==0.19.4
+gunicorn
 -e .
