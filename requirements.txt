@@ -6,6 +6,6 @@ pypdf
 pydantic>=2.7.0
 huggingface_hub>=0.23.0
 sentence-transformers>=2.6.0
-gunicorn
+gunicorn==21.2.0
 
 -e .
