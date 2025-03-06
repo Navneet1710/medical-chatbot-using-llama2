@@ -21,19 +21,23 @@ PINECONE_API_ENV = os.getenv('PINECONE_API_ENV')
 INDEX_NAME = "medical-bot"
 
 def initialize_pinecone():
-    """Initialize Pinecone client and return the index"""
-    pc = pinecone.Pinecone(
-        api_key=PINECONE_API_KEY,
-        environment=PINECONE_API_ENV
-    )
+    """Initialize Pinecone client and patch pinecone.Index to match the new type."""
+    # Patch pinecone.Index so that it equals the new client index type.
+    from pinecone.data.index import Index as PineconeIndex
+    pinecone.Index = PineconeIndex
+    # Now create the Pinecone client instance.
+    pc = pinecone.Pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_API_ENV)
     return pc
 
 def setup_qa_chain():
-    """Set up the QA chain with embeddings and LLM"""
+    """Set up the QA chain with embeddings and LLM."""
     # Initialize embeddings
     embeddings = download_hugging_face_embeddings()
     
-    # Initialize Pinecone vector store
+    # Initialize Pinecone client and patch its Index type.
+    pc = initialize_pinecone()
+    
+    # Use Langchain's Pinecone wrapper to connect to the existing index.
     docsearch = LangchainPinecone.from_existing_index(
         index_name=INDEX_NAME,
         embedding=embeddings,
@@ -53,17 +57,17 @@ def setup_qa_chain():
     # Create prompt template
     PROMPT = PromptTemplate(
         template="""Use the following pieces of information to answer the user's question.
-        If you don't know the answer, just say that you don't know, don't try to make up an answer.
+If you don't know the answer, just say that you don't know, don't try to make up an answer.
 
-        Context: {context}
-        Question: {question}
+Context: {context}
+Question: {question}
 
-        Only return the helpful answer below and nothing else.
-        Helpful answer:""", 
+Only return the helpful answer below and nothing else.
+Helpful answer:""", 
         input_variables=["context", "question"]
     )
     
-    # Create QA chain using the new invoke method
+    # Create QA chain using the new invoke method.
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -74,28 +78,22 @@ def setup_qa_chain():
     
     return qa_chain
 
-# Function to load and encode local images
+# Function to load and encode local images.
 def get_base64_of_image(image_path):
-    """Get base64 encoded string of an image to embed in HTML"""
+    """Get base64 encoded string of an image to embed in HTML."""
     if not os.path.exists(image_path):
-        # Return a default image or placeholder if the image doesn't exist
         return ""
-    
     with open(image_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode()
 
-# Custom CSS for chat styling
+# Custom CSS for chat styling.
 def local_css():
-    # Define paths to your local images - REPLACE THESE WITH YOUR ACTUAL LOCAL PATHS
-    # If you don't have local images, leave a comment and we'll handle that case
-    bot_avatar_path = "assets/bot-avatar.png"  # Replace with your local bot avatar path
-    user_avatar_path = "assets/user-avatar.png"  # Replace with your local user avatar path
+    bot_avatar_path = "assets/bot-avatar.png"
+    user_avatar_path = "assets/user-avatar.png"
     
-    # Get base64 encoded images or use fallback colors if images don't exist
     bot_avatar_base64 = get_base64_of_image(bot_avatar_path)
     user_avatar_base64 = get_base64_of_image(user_avatar_path)
     
-    # Prepare image CSS with fallbacks
     bot_avatar_css = f"background-image: url(data:image/png;base64,{bot_avatar_base64}); background-size: cover;" if bot_avatar_base64 else "background-color: #3a7efc;"
     user_avatar_css = f"background-image: url(data:image/png;base64,{user_avatar_base64}); background-size: cover;" if user_avatar_base64 else "background-color: #58cc71;" 
     
@@ -215,7 +213,6 @@ def local_css():
 def main():
     local_css()
     
-    # Create or get session state for chat history and input tracking
     if 'messages' not in st.session_state:
         st.session_state.messages = []
     
@@ -225,44 +222,29 @@ def main():
     if 'processing' not in st.session_state:
         st.session_state.processing = False
     
-    # Function to handle message submission
     def handle_input():
         if st.session_state.widget_input and not st.session_state.processing:
-            # Set processing flag to prevent multiple submissions
             st.session_state.processing = True
-            
-            # Get current input and clear the input field
             user_message = st.session_state.widget_input
             st.session_state.widget_input = ""
-            
-            # Get current time
             current_time = datetime.now().strftime("%H:%M")
-            
-            # Add user message to chat
             st.session_state.messages.append({
                 'role': 'user',
                 'content': user_message,
                 'time': current_time
             })
-            
-            # Process with QA chain
             try:
                 result = st.session_state.qa_chain({"query": user_message})
                 bot_response = result["result"]
             except Exception as e:
                 bot_response = f"Sorry, I encountered an error: {str(e)}"
-            
-            # Add bot response to chat
             st.session_state.messages.append({
                 'role': 'bot',
                 'content': bot_response,
                 'time': current_time
             })
-            
-            # Reset processing flag
             st.session_state.processing = False
     
-    # Chat header
     st.markdown("""
     <div class="chat-header">
         <div style="position: relative;">
@@ -276,10 +258,8 @@ def main():
     </div>
     """, unsafe_allow_html=True)
     
-    # Chat container
     st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
     
-    # Display chat messages
     for message in st.session_state.messages:
         if message['role'] == 'user':
             st.markdown(f"""
@@ -304,7 +284,6 @@ def main():
     
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Chat input - Using callback for better control
     st.markdown('<div class="chat-input">', unsafe_allow_html=True)
     st.text_input(
         "Type your message...", 
@@ -313,17 +292,15 @@ def main():
     )
     st.markdown('</div>', unsafe_allow_html=True)
     
-    # Initialize QA chain
     if 'qa_chain' not in st.session_state:
         with st.spinner("Loading medical knowledge base..."):
             try:
                 st.session_state.qa_chain = setup_qa_chain()
                 st.success("Medical bot is ready!")
                 time.sleep(1)
-                st.rerun()  # Use st.rerun() instead of st.experimental_rerun()
+                st.rerun()
             except Exception as e:
                 st.error(f"Error setting up QA chain: {e}")
 
-# Run the app
 if __name__ == "__main__":
     main()
