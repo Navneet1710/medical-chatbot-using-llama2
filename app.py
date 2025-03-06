@@ -22,7 +22,7 @@ INDEX_NAME = "medical-bot"
 
 def initialize_pinecone():
     """Initialize Pinecone client and patch pinecone.Index to match the new type."""
-    # Patch pinecone.Index so that it equals the new client index type.
+    # Patch pinecone.Index to be the correct type.
     from pinecone.data.index import Index as PineconeIndex
     pinecone.Index = PineconeIndex
     # Now create the Pinecone client instance.
@@ -78,7 +78,6 @@ Helpful answer:""",
     
     return qa_chain
 
-# Function to load and encode local images.
 def get_base64_of_image(image_path):
     """Get base64 encoded string of an image to embed in HTML."""
     if not os.path.exists(image_path):
@@ -86,7 +85,6 @@ def get_base64_of_image(image_path):
     with open(image_path, "rb") as img_file:
         return base64.b64encode(img_file.read()).decode()
 
-# Custom CSS for chat styling.
 def local_css():
     bot_avatar_path = "assets/bot-avatar.png"
     user_avatar_path = "assets/user-avatar.png"
@@ -213,14 +211,25 @@ def local_css():
 def main():
     local_css()
     
-    if 'messages' not in st.session_state:
-        st.session_state.messages = []
-    
-    if 'user_input' not in st.session_state:
-        st.session_state.user_input = ""
-    
-    if 'processing' not in st.session_state:
-        st.session_state.processing = False
+    # Initialize essential session state variables.
+    if "messages" not in st.session_state:
+        st.session_state["messages"] = []
+    if "widget_input" not in st.session_state:
+        st.session_state["widget_input"] = ""
+    if "processing" not in st.session_state:
+        st.session_state["processing"] = False
+    if "qa_chain" not in st.session_state:
+        st.session_state["qa_chain"] = None
+
+    # If qa_chain is not initialized, do it now.
+    if st.session_state.qa_chain is None:
+        with st.spinner("Loading medical knowledge base..."):
+            try:
+                st.session_state.qa_chain = setup_qa_chain()
+                st.success("Medical bot is ready!")
+                # No rerun() so that the chain remains set.
+            except Exception as e:
+                st.error(f"Error setting up QA chain: {e}")
     
     def handle_input():
         if st.session_state.widget_input and not st.session_state.processing:
@@ -234,6 +243,9 @@ def main():
                 'time': current_time
             })
             try:
+                # Make sure qa_chain exists before calling it.
+                if st.session_state.qa_chain is None:
+                    raise ValueError("qa_chain is not initialized.")
                 result = st.session_state.qa_chain({"query": user_message})
                 bot_response = result["result"]
             except Exception as e:
@@ -244,7 +256,7 @@ def main():
                 'time': current_time
             })
             st.session_state.processing = False
-    
+
     st.markdown("""
     <div class="chat-header">
         <div style="position: relative;">
@@ -259,7 +271,6 @@ def main():
     """, unsafe_allow_html=True)
     
     st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
-    
     for message in st.session_state.messages:
         if message['role'] == 'user':
             st.markdown(f"""
@@ -281,7 +292,6 @@ def main():
                 </div>
             </div>
             """, unsafe_allow_html=True)
-    
     st.markdown('</div>', unsafe_allow_html=True)
     
     st.markdown('<div class="chat-input">', unsafe_allow_html=True)
@@ -291,16 +301,6 @@ def main():
         on_change=handle_input
     )
     st.markdown('</div>', unsafe_allow_html=True)
-    
-    if 'qa_chain' not in st.session_state:
-        with st.spinner("Loading medical knowledge base..."):
-            try:
-                st.session_state.qa_chain = setup_qa_chain()
-                st.success("Medical bot is ready!")
-                time.sleep(1)
-                st.rerun()
-            except Exception as e:
-                st.error(f"Error setting up QA chain: {e}")
 
 if __name__ == "__main__":
     main()
