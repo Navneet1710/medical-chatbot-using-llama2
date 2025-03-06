@@ -13,7 +13,7 @@ import base64
 from pathlib import Path
 
 # Load environment variables
-load_dotenv()
+load_dotenv(dotenv_path=".env")
 
 # Environment variables
 PINECONE_API_KEY = os.getenv('PINECONE_API_KEY')
