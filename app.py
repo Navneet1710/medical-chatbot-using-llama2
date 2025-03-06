@@ -26,7 +26,7 @@ def initialize_pinecone():
     from pinecone.data.index import Index as PineconeIndex
     pinecone.Index = PineconeIndex
     # Now create the Pinecone client instance.
-    pc = pinecone.Pinecone(api_key=PINECONE_API_KEY, environment=PINECONE_API_ENV)
+    pc = pinecone.Pinecone(api_key='PINECONE_API_KEY', environment='PINECONE_API_ENV')
     return pc
 
 def setup_qa_chain():
