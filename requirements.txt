@@ -35,7 +35,9 @@ numpy
 orjson
 packaging
 pillow
-pinecone
+pinecone-client
+pinecone-plugin-inference
+pinecone-plugin-interface
 propcache
 py-cpuinfo
 pydantic
