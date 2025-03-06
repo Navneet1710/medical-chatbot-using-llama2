@@ -36,8 +36,6 @@ orjson
 packaging
 pillow
 pinecone
-# pinecone-plugin-inference
-# pinecone-plugin-interface
 propcache
 py-cpuinfo
 pydantic
