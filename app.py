@@ -30,14 +30,17 @@ def initialize_pinecone():
 
 def setup_qa_chain():
     """Set up the QA chain with embeddings and LLM"""
-
+    # Initialize embeddings
     embeddings = download_hugging_face_embeddings()
-
+    
+    # Initialize Pinecone vector store
     docsearch = Pinecone.from_existing_index(
         index_name=INDEX_NAME,
         embedding=embeddings,
         text_key="text"
     )
+    
+    # Set up LLM
     llm = CTransformers(
         model="model/llama-2-7b-chat.ggmlv3.q4_0.bin",
         model_type="llama",
@@ -47,6 +50,7 @@ def setup_qa_chain():
         }
     )
     
+    # Create prompt template
     PROMPT = PromptTemplate(
         template="""Use the following pieces of information to answer the user's question.
         If you don't know the answer, just say that you don't know, don't try to make up an answer.
@@ -59,6 +63,7 @@ def setup_qa_chain():
         input_variables=["context", "question"]
     )
     
+    # Create QA chain using the new invoke method
     qa_chain = RetrievalQA.from_chain_type(
         llm=llm,
         chain_type="stuff",
@@ -69,22 +74,30 @@ def setup_qa_chain():
     
     return qa_chain
 
-# Function to reference image paths directly
-def get_image_path():
-    """Get paths to the avatar images"""
-    bot_avatar_path = "assets/medical-icon.png"  # ← UPDATED PATH TO YOUR MEDICAL ICON
-    user_avatar_path = "assets/user-avatar.png"
+# Function to load and encode local images
+def get_base64_of_image(image_path):
+    """Get base64 encoded string of an image to embed in HTML"""
+    if not os.path.exists(image_path):
+        # Return a default image or placeholder if the image doesn't exist
+        return ""
     
-    return bot_avatar_path, user_avatar_path
+    with open(image_path, "rb") as img_file:
+        return base64.b64encode(img_file.read()).decode()
 
 # Custom CSS for chat styling
 def local_css():
-    # Get image paths
-    bot_avatar_path, user_avatar_path = get_image_path()
+    # Define paths to your local images - REPLACE THESE WITH YOUR ACTUAL LOCAL PATHS
+    # If you don't have local images, leave a comment and we'll handle that case
+    bot_avatar_path = "assets/bot-avatar.png"  # Replace with your local bot avatar path
+    user_avatar_path = "assets/user-avatar.png"  # Replace with your local user avatar path
     
-    # Create CSS for images using file paths instead of base64
-    bot_avatar_css = f"background-image: url({bot_avatar_path}); background-size: cover;" if os.path.exists(bot_avatar_path) else "background-color: #3a7efc;"
-    user_avatar_css = f"background-image: url({user_avatar_path}); background-size: cover;" if os.path.exists(user_avatar_path) else "background-color: #58cc71;"
+    # Get base64 encoded images or use fallback colors if images don't exist
+    bot_avatar_base64 = get_base64_of_image(bot_avatar_path)
+    user_avatar_base64 = get_base64_of_image(user_avatar_path)
+    
+    # Prepare image CSS with fallbacks
+    bot_avatar_css = f"background-image: url(data:image/png;base64,{bot_avatar_base64}); background-size: cover;" if bot_avatar_base64 else "background-color: #3a7efc;"
+    user_avatar_css = f"background-image: url(data:image/png;base64,{user_avatar_base64}); background-size: cover;" if user_avatar_base64 else "background-color: #58cc71;" 
     
     st.markdown(f"""
     <style>
@@ -249,14 +262,11 @@ def main():
             # Reset processing flag
             st.session_state.processing = False
     
-    # Use the direct image path for the header
-    bot_avatar_path, _ = get_image_path()
-    
-    # Chat header with image
-    st.markdown(f"""
+    # Chat header
+    st.markdown("""
     <div class="chat-header">
         <div style="position: relative;">
-            <img src="{bot_avatar_path}" class="header-avatar" alt="Medical Bot" onerror="this.style.backgroundColor='#3a7efc';">
+            <div class="header-avatar"></div>
             <div class="online-indicator"></div>
         </div>
         <div class="header-text">
@@ -269,9 +279,6 @@ def main():
     # Chat container
     st.markdown('<div class="chat-container" id="chat-container">', unsafe_allow_html=True)
     
-    # Get image paths for the messages
-    bot_avatar_path, user_avatar_path = get_image_path()
-    
     # Display chat messages
     for message in st.session_state.messages:
         if message['role'] == 'user':
@@ -281,13 +288,13 @@ def main():
                     {message['content']}
                     <div class="timestamp">{message['time']}</div>
                 </div>
-                <img src="{user_avatar_path}" class="avatar-img" alt="User" onerror="this.style.backgroundColor='#58cc71';">
+                <div class="avatar-img"></div>
             </div>
             """, unsafe_allow_html=True)
         else:
             st.markdown(f"""
             <div class="bot-message">
-                <img src="{bot_avatar_path}" class="avatar-img-bot" alt="Bot" onerror="this.style.backgroundColor='#3a7efc';">
+                <div class="avatar-img-bot"></div>
                 <div class="msg-content-bot">
                     {message['content']}
                     <div class="timestamp">{message['time']}</div>

@@ -67,4 +67,3 @@ urllib3
 yarl
 zstandard
 python-dotenv
-langchain-community

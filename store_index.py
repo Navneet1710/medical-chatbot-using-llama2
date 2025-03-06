@@ -97,7 +97,7 @@ def main():
             except Exception as e:
                 print(f"Error getting index stats: {e}")
 
-    # Final verification
+    # Final verification ok
     try:
         final_stats = index.describe_index_stats()
         print(f"Final index stats: {final_stats}")
