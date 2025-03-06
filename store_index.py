@@ -1,5 +1,5 @@
 from src.helper import load_pdf, text_split, download_hugging_face_embeddings
-from langchain.vectorstores import Pinecone
+from langchain_community.vectorstores import Pinecone as LangchainPinecone
 import pinecone
 from dotenv import load_dotenv
 import os
@@ -24,7 +24,7 @@ def main():
     embeddings = download_hugging_face_embeddings()
 
     # Initialize Pinecone
-    pc = Pinecone(
+    pc = pinecone.Pinecone(
         api_key=PINECONE_API_KEY,
         environment=PINECONE_API_ENV
     )
@@ -32,17 +32,16 @@ def main():
     index_name = "medical-bot"
 
     # Check if index exists, if not create it
-    if index_name not in pc.list_indexes().names():
-        spec = pinecone.ServerlessSpec(
-            cloud='aws',
-            region='us-east-1'
-        )
-        
+    existing_indexes = [index.name for index in pc.list_indexes()]
+    if index_name not in existing_indexes:
         pc.create_index(
             name=index_name,
             dimension=384,
             metric='cosine',
-            spec=spec
+            spec=pinecone.ServerlessSpec(
+                cloud='aws',
+                region='us-east-1'
+            )
         )
         # Wait for index to be ready
         print("Created new index. Waiting for it to initialize...")

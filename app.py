@@ -1,6 +1,6 @@
 import streamlit as st
 from src.helper import download_hugging_face_embeddings
-from langchain_community.vectorstores import Pinecone
+from langchain_community.vectorstores import Pinecone as LangchainPinecone
 from langchain.prompts import PromptTemplate
 from langchain_community.llms import CTransformers
 from langchain.chains import RetrievalQA
@@ -22,7 +22,7 @@ INDEX_NAME = "medical-bot"
 
 def initialize_pinecone():
     """Initialize Pinecone client and return the index"""
-    pc = Pinecone(
+    pc = pinecone.Pinecone(
         api_key=PINECONE_API_KEY,
         environment=PINECONE_API_ENV
     )
@@ -34,7 +34,7 @@ def setup_qa_chain():
     embeddings = download_hugging_face_embeddings()
     
     # Initialize Pinecone vector store
-    docsearch = Pinecone.from_existing_index(
+    docsearch = LangchainPinecone.from_existing_index(
         index_name=INDEX_NAME,
         embedding=embeddings,
         text_key="text"
