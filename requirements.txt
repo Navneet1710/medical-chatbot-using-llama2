@@ -35,7 +35,7 @@ numpy
 orjson
 packaging
 pillow
-pinecone-client
+pinecone
 pinecone-plugin-inference
 pinecone-plugin-interface
 propcache
