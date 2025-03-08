@@ -55,17 +55,13 @@ python store_index.py
 python app.py
 ```
 
-Now,
-```bash
-open up localhost:
-```
+
 
 
 ### Techstack Used:
 
 - Python
 - LangChain
-- Flask
 - Meta Llama2
 - Pinecone
 
